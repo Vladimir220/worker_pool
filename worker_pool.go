@@ -55,12 +55,12 @@ func (sw *simpleWorker) Stop() {
 }
 
 // exported
-// constuctor for any worker
+// factory for any worker
 type WorkerCreatorFunc func(int, chan struct{}, *sync.WaitGroup, <-chan string, chan<- string) IWorker
 
 // exported
 // implement WorkerCreatorFunc
-// constuctor for simpleWorker
+// factory for simpleWorker
 func SimpleWorkerCreator(id int, stopSignal chan struct{}, wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string) IWorker {
 	return &simpleWorker{id, stopSignal, true, wg, inputCh, outputCh}
 }
@@ -120,7 +120,7 @@ func (wp *workerPool) Stop() {
 }
 
 // exported
-// constuctor for WorkerPool
+// factory for WorkerPool
 func WorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string, workerCreator WorkerCreatorFunc) workerPool {
 	return workerPool{wg, inputCh, outputCh, workerCreator, make([]IWorker, 0)}
 }
@@ -173,7 +173,7 @@ func (p *outStreamWorkerPool) StopListening() {
 }
 
 // exported
-// constuctor for OutStreamWorkerPoolCraetor
+// factory for OutStreamWorkerPoolCraetor
 func OutStreamWorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, workerCreator WorkerCreatorFunc, writer io.Writer) *outStreamWorkerPool {
 	outputCh := make(chan string)
 	io.Copy(writer, strings.NewReader("str"))

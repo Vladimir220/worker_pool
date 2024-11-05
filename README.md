@@ -53,6 +53,14 @@
 - GetNumOfWorkers() int -- возвращает количество активных worker-ов
 ### Пример работы с базовым workerPool ###
 ```
+package main
+
+import (
+	"fmt"
+	"sync"
+	wp "github.com/Vladimir220/worker_pool"
+)
+
 func main() {
 
 	inputCh := make(chan string)

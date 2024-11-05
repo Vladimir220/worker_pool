@@ -103,7 +103,7 @@ func (wp *workerPool) DropWorkers(count int) error {
 	if count > len(wp.workers) {
 		return fmt.Errorf("you are trying to drop (%d) more workers than there are in the pool (%d)", count, len(wp.workers))
 	}
-
+	time.Sleep(time.Second * 1)
 	for i := 1; i <= count; i++ {
 		wp.workers[len(wp.workers)-i].Stop()
 	}

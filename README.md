@@ -14,8 +14,7 @@
 Для возможности расширения предлагается использовались интерфейсы, фабричные методы, паттерн проектирования "Посредник" ("Proxy"). Подробнее об этом в разделе "Рекомендации по расширению функционала".
 ### Описание модуля ###
 ####Диаграмма классов для лучшего понимания структуры модуля:####
-![1]
-(https://github.com/Vladimir220/worker_pool/blob/main/class_diagram.jpg)
+![1](https://github.com/Vladimir220/worker_pool/blob/main/class_diagram.jpg)
 Последовательно опишу всё интерфейсы и структуры (классы):
 - IWorker: **экспортируемый** интерфейс для описания семейства различных взаимозаменяемых worker-ов
 - simpleWorker: **неэкспортируемая** стуктура, представляющая <u>пример</u> реализации интерфейса IWorker
@@ -90,5 +89,4 @@ func main() {
 }
 ```
 #### Результат выполнения: ####
-![2]
-(https://github.com/Vladimir220/worker_pool/blob/main/tests/Exmp_res.JPG)
+![2](https://github.com/Vladimir220/worker_pool/blob/main/tests/Exmp_res.JPG)

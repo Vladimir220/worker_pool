@@ -11,6 +11,7 @@ import (
 // ------ division of workers ------
 
 // exported
+
 type IWorker interface {
 	Start()
 	Stop()

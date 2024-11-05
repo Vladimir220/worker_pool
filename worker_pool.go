@@ -1,7 +1,6 @@
-package warker_pool
+package worker_pool
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -70,15 +69,15 @@ func SimpleWorkerCreator(id int, stopSignal chan struct{}, wg *sync.WaitGroup, i
 
 // exported
 type IWorkerPool interface {
-	AddAndStartWorkers()
-	DropWorkers() error
+	AddAndStartWorkers(count int)
+	DropWorkers(count int) error
 	Stop()
 	GetNumOfWorkers() int
 }
 
 // unexported
 // implement IWorkerPool
-type WorkerPool struct {
+type workerPool struct {
 	wg            *sync.WaitGroup
 	inputCh       <-chan string
 	outputCh      chan<- string
@@ -86,11 +85,11 @@ type WorkerPool struct {
 	workers       []IWorker
 }
 
-func (wp *WorkerPool) GetNumOfWorkers() int {
+func (wp *workerPool) GetNumOfWorkers() int {
 	return len(wp.workers)
 }
 
-func (wp *WorkerPool) AddWorkersAndStart(count int) {
+func (wp *workerPool) AddWorkersAndStart(count int) {
 	sizeW := len(wp.workers)
 	for i := sizeW; i < sizeW+count; i++ {
 		wp.wg.Add(1)
@@ -100,9 +99,9 @@ func (wp *WorkerPool) AddWorkersAndStart(count int) {
 	}
 }
 
-func (wp *WorkerPool) DropWorkers(count int) error {
+func (wp *workerPool) DropWorkers(count int) error {
 	if count > len(wp.workers) {
-		return errors.New(fmt.Sprintf("You are trying to drop (%d) more workers than there are in the pool (%d)", count, len(wp.workers)))
+		return fmt.Errorf("you are trying to drop (%d) more workers than there are in the pool (%d)", count, len(wp.workers))
 	}
 
 	for i := 1; i <= count; i++ {
@@ -112,7 +111,7 @@ func (wp *WorkerPool) DropWorkers(count int) error {
 	return nil
 }
 
-func (wp *WorkerPool) Stop() {
+func (wp *workerPool) Stop() {
 	time.Sleep(time.Second * 1)
 	for _, w := range wp.workers {
 		w.Stop()
@@ -122,8 +121,8 @@ func (wp *WorkerPool) Stop() {
 
 // exported
 // constuctor for WorkerPool
-func WorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string, workerCreator WorkerCreatorFunc) WorkerPool {
-	return WorkerPool{wg, inputCh, outputCh, workerCreator, make([]IWorker, 0)}
+func WorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string, workerCreator WorkerCreatorFunc) workerPool {
+	return workerPool{wg, inputCh, outputCh, workerCreator, make([]IWorker, 0)}
 }
 
 // ------ division of proxy extension for WorkerPool (example) ------
@@ -131,8 +130,8 @@ func WorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<
 // unexported
 // implement IWorkerPool
 // example
-type OutStreamWorkerPool struct {
-	wp            WorkerPool
+type outStreamWorkerPool struct {
+	wp            workerPool
 	wg            *sync.WaitGroup
 	inputCh       <-chan string
 	outputCh      chan string
@@ -141,23 +140,23 @@ type OutStreamWorkerPool struct {
 	isListening   bool
 }
 
-func (p *OutStreamWorkerPool) GetNumOfWorkers() int {
+func (p *outStreamWorkerPool) GetNumOfWorkers() int {
 	return p.wp.GetNumOfWorkers()
 }
 
-func (p *OutStreamWorkerPool) AddWorkersAndStart(count int) {
+func (p *outStreamWorkerPool) AddWorkersAndStart(count int) {
 	p.wp.AddWorkersAndStart(count)
 }
 
-func (p *OutStreamWorkerPool) DropWorkers(count int) error {
+func (p *outStreamWorkerPool) DropWorkers(count int) error {
 	return p.wp.DropWorkers(count)
 }
 
-func (p *OutStreamWorkerPool) Stop() {
+func (p *outStreamWorkerPool) Stop() {
 	p.wp.Stop()
 }
 
-func (p *OutStreamWorkerPool) ListeningCh() {
+func (p *outStreamWorkerPool) ListeningCh() {
 
 	go func() {
 		for str := range p.outputCh {
@@ -169,17 +168,17 @@ func (p *OutStreamWorkerPool) ListeningCh() {
 	}()
 }
 
-func (p *OutStreamWorkerPool) StopListening() {
+func (p *outStreamWorkerPool) StopListening() {
 	p.isListening = false
 }
 
 // exported
 // constuctor for OutStreamWorkerPoolCraetor
-func OutStreamWorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, workerCreator WorkerCreatorFunc, writer io.Writer) *OutStreamWorkerPool {
+func OutStreamWorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, workerCreator WorkerCreatorFunc, writer io.Writer) *outStreamWorkerPool {
 	outputCh := make(chan string)
 	io.Copy(writer, strings.NewReader("str"))
 	wp := WorkerPoolCraetor(wg, inputCh, outputCh, workerCreator)
-	oswp := OutStreamWorkerPool{wp, &sync.WaitGroup{}, inputCh, outputCh, workerCreator, writer, true}
+	oswp := outStreamWorkerPool{wp, &sync.WaitGroup{}, inputCh, outputCh, workerCreator, writer, true}
 	oswp.ListeningCh()
 	return &oswp
 }

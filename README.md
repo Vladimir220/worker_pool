@@ -26,7 +26,9 @@
 - WorkerPoolCraetor() -- для создания workerPool
 - OutStreamWorkerPoolCraetor() -- для создания OutStreamWorkerPoolCraetor (пример фабрики для примера-структуры)
 Обращаю внимание, что workerPool имеет поле workerCreator, которое представляет собой функцию-фабрику для создания worker-ов. Это поле имеет функциональный тип следующего вида:
+
 `type WorkerCreatorFunc func(int, chan struct{}, *sync.WaitGroup, <-chan string, chan<- string) IWorker`
+
 Связи между структурами:
 - между IWorker и workerPool установлена связь-агрегация, поскольку workerPool с помощью указанного выше функционального поля создаёт массив из элементов IWorker, которые управляются workerPool, однако имеют независимость за счёт их запуска в отдельных горутинах
 - между workerPool и outStreamWorkerPool (пример расширения) установлена связь-композиция, поскольку outStreamWorkerPool управляет строго одним workerPool на протяжении всего своего жизненного цикла
@@ -37,7 +39,9 @@
 - Для расширения функционала базового worker pool (по умолчанию workerPool) используйте для него proxy-обёртку, которая также надо наследовать от интерфейса IWorkerPool. Для новой структуры также надо сделать фабричный метод, создающий и инициализирующий эту структуру.
 ### Инструкция по работе с базовым workerPool ###
 Создайте workerPool через фабричный метод: 
+
 `WorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string, workerCreator WorkerCreatorFunc) workerPool`
+
 Сразу решите, как будете останавливать workerPool: сразу или с помощью defer. Важно остановить workerPool, иначе worker-ы продолжат работу после завершения основного кода.
 Если вы останавливаете workerPool в другой горутине, то в основном коде можете дождаться окончание работы с помощью: `wg.Wait()`, который был ранее передал в workerPool.
 Функции workerPool:

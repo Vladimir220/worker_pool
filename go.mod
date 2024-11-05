@@ -1,3 +1,3 @@
-module github.com/Vladimir220/worke_pool
+module github.com/Vladimir220/worker_pool
 
 go 1.22.1

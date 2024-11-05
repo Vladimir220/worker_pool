@@ -95,4 +95,4 @@ func main() {
 }
 ```
 #### Результат выполнения: ####
-![2](https://github.com/Vladimir220/worker_pool/blob/main/tests/Exmp_res.JPG)
+![2](https://github.com/Vladimir220/worker_pool/blob/main/Exmp_res.JPG)

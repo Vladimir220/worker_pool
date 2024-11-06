@@ -65,14 +65,15 @@ package main
 import (
 	"fmt"
 	"sync"
-	wp "github.com/Vladimir220/worker_pool"
+
+	wpImp "github.com/Vladimir220/worker_pool"
 )
 
 func main() {
 	inputCh := make(chan string)
 	outputCh := make(chan string)
 	wg := &sync.WaitGroup{}
-	wp := wp.WorkerPoolCraetor(wg, inputCh, outputCh, wp.SimpleWorkerCreator)
+	wp := wpImp.WorkerPoolCraetor(wg, inputCh, outputCh, wpImp.SimpleWorkerCreator)
 
 	defer wp.Stop()
 
@@ -119,7 +120,6 @@ func main() {
 	for i := 0; i < 10; i++ {
 		inputCh <- fmt.Sprintf("%d", i)
 	}
-
 }
 ```
 #### Результат выполнения: ####
@@ -140,13 +140,19 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
-	wp "github.com/Vladimir220/worker_pool"
+
+	wpImp "github.com/Vladimir220/worker_pool"
 )
 
 func main() {
+	inputCh := make(chan string)
+	wg := &sync.WaitGroup{}
+
 	oswp := wpImp.OutStreamWorkerPoolCraetor(wg, inputCh, wpImp.SimpleWorkerCreator, os.Stdout)
 	defer oswp.Stop()
+
 	fmt.Println("Тест OutStreamWorkerPoolCraetor")
 	fmt.Println("Добавляем и запускаем 3 исполнителя")
 	oswp.AddWorkersAndStart(3)

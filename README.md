@@ -19,7 +19,7 @@ go get github.com/Vladimir220/worker_pool
 Для возможности расширения предлагается использовать интерфейсы, фабричные методы, паттерн проектирования "Посредник" ("Proxy"). Подробнее об этом в разделе "Рекомендации по расширению функционала".
 ### Описание модуля ###
 #### Диаграмма классов для лучшего понимания структуры модуля: ####
-![1](https://github.com/Vladimir220/worker_pool/blob/main/pics/class_diagram.jpg)
+![1](https://github.com/Vladimir220/worker_pool/blob/v0.0.4/pics/class_diagram.jpg)
 
 Последовательно опишу всё интерфейсы и структуры (классы):
 - IWorker: **экспортируемый** интерфейс для описания семейства различных взаимозаменяемых worker-ов
@@ -121,7 +121,7 @@ func main() {
 }
 ```
 #### Результат выполнения: ####
-![2](https://github.com/Vladimir220/worker_pool/blob/main/pics/Exmp_res.JPG)
+![2](https://github.com/Vladimir220/worker_pool/blob/v0.0.4/pics/Exmp_res.JPG)
 
 ### Инструкция по работе с outStreamWorkerPool (proxy-расширением для workerPool) ###
 Для работы с outStreamWorkerPool создайте outStreamWorkerPool через фабричный метод: 

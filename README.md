@@ -8,8 +8,8 @@
 - [Рекомендации по расширению функционала](#рекомендации-по-расширению-функционала)
 - [Инструкция по работе с базовым workerPool](#инструкция-по-работе-с-базовым-workerPool)
 - [Пример работы с базовым workerPool](#пример-работы-с-базовым-workerPool)
-- [Инструкция по работе с outStreamWorkerPool (proxy-расширением для workerPool)](#инструкция-по-работе-с-outStreamWorkerPool-(proxy-расширением-для-workerPool))
-- [Пример работы с outStreamWorkerPool (proxy-расширением для workerPool)](#пример-работы-с-outStreamWorkerPool-(proxy-расширением-для-workerPool))
+- [Инструкция по работе с outStreamWorkerPool (proxy-расширением для workerPool)](#инструкция-по-работе-с-outStreamWorkerPool-proxy-расширением-для-workerPool)
+- [Пример работы с outStreamWorkerPool (proxy-расширением для workerPool)](#пример-работы-с-outStreamWorkerPool-proxy-расширением-для-workerPool)
 ---
 ### Установка ###
 ```

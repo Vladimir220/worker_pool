@@ -62,7 +62,6 @@ import (
 )
 
 func main() {
-
 	inputCh := make(chan string)
 	outputCh := make(chan string)
 	wg := &sync.WaitGroup{}
@@ -70,15 +69,29 @@ func main() {
 
 	defer wp.Stop()
 
-	// прослушиваем результаты
 	isStop := false
+	stopSignal := make(chan struct{})
+
+	defer func() {
+		isStop = true
+		close(stopSignal)
+	}()
+
 	go func() {
 
-		for d := range outputCh {
-			if isStop {
+		for {
+			select {
+			case d := <-outputCh:
+				{
+					fmt.Println(d)
+
+					if isStop {
+						return
+					}
+				}
+			case <-stopSignal:
 				return
 			}
-			fmt.Println(d)
 		}
 	}()
 

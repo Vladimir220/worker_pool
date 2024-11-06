@@ -155,6 +155,7 @@ func (p *outStreamWorkerPool) DropWorkers(count int) error {
 
 func (p *outStreamWorkerPool) Stop() {
 	p.wp.Stop()
+	p.StopListening()
 }
 
 func (p *outStreamWorkerPool) ListeningCh() {
@@ -164,7 +165,7 @@ func (p *outStreamWorkerPool) ListeningCh() {
 			if !p.isListening {
 				return
 			}
-			io.Copy(p.writer, strings.NewReader(str))
+			io.Copy(p.writer, strings.NewReader(str+"\n"))
 		}
 	}()
 }
@@ -177,7 +178,6 @@ func (p *outStreamWorkerPool) StopListening() {
 // factory for OutStreamWorkerPoolCraetor
 func OutStreamWorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, workerCreator WorkerCreatorFunc, writer io.Writer) *outStreamWorkerPool {
 	outputCh := make(chan string)
-	io.Copy(writer, strings.NewReader("str"))
 	wp := WorkerPoolCraetor(wg, inputCh, outputCh, workerCreator)
 	oswp := outStreamWorkerPool{wp, &sync.WaitGroup{}, inputCh, outputCh, workerCreator, writer, true}
 	oswp.ListeningCh()

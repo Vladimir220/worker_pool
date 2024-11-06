@@ -19,14 +19,14 @@ go get github.com/Vladimir220/worker_pool
 Для возможности расширения предлагается использовать интерфейсы, фабричные методы, паттерн проектирования "Посредник" ("Proxy"). Подробнее об этом в разделе "Рекомендации по расширению функционала".
 ### Описание модуля ###
 #### Диаграмма классов для лучшего понимания структуры модуля: ####
-![1](https://github.com/Vladimir220/worker_pool/blob/main/class_diagram.jpg)
+![1](https://github.com/Vladimir220/worker_pool/blob/main/pics/class_diagram.jpg)
 
 Последовательно опишу всё интерфейсы и структуры (классы):
 - IWorker: **экспортируемый** интерфейс для описания семейства различных взаимозаменяемых worker-ов
-- simpleWorker: **неэкспортируемая** структура, представляющая <u>пример</u> реализации интерфейса IWorker
+- simpleWorker: **неэкспортируемая** структура, представляющая <ins>пример</ins> реализации интерфейса IWorker
 - IWorkerPool: **экспортируемый** интерфейс для описания семейства различных взаимозаменяемых worker pool-ов
 - workerPool: **неэкспортируемая** структура, представляющая базовую реализацию интерфейса IWorkerPool (хотя остаётся возможность определить другую базовую реализацию)
-- outStreamWorkerPool: **неэкспортируемая** структура, представляющая <u>пример</u> расширения базового функционала worker pool (по умолчанию это структура workerPool) через паттерн проектирования "Посредник" ("Proxy")
+- outStreamWorkerPool: **неэкспортируемая** структура, представляющая <ins>пример</ins> расширения базового функционала worker pool (по умолчанию это структура workerPool) через паттерн проектирования "Посредник" ("Proxy")
 Для получения в основной программе экземпляров неэкспортируемых структур используются фабричные методы:
 - SimpleWorkerCreator() -- для создания simpleWorker (пример фабрики для примера-структуры)
 - WorkerPoolCraetor() -- для создания workerPool
@@ -48,7 +48,7 @@ go get github.com/Vladimir220/worker_pool
 
 `WorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string, workerCreator WorkerCreatorFunc) workerPool`
 
-Сразу решите, как будете останавливать workerPool: сразу или с помощью defer. Важно остановить workerPool, иначе worker-ы продолжат работу после завершения основного кода.
+Сразу решите, как будете останавливать workerPool: самостоятельно или с помощью defer. Важно остановить workerPool, иначе worker-ы продолжат работу после завершения основного кода.
 Если вы останавливаете workerPool в другой горутине, то в основном коде можете дождаться окончание работы с помощью: `wg.Wait()`, который был ранее передан в workerPool.
 
 Функции workerPool:
@@ -121,4 +121,48 @@ func main() {
 }
 ```
 #### Результат выполнения: ####
-![2](https://github.com/Vladimir220/worker_pool/blob/main/Exmp_res.JPG)
+![2](https://github.com/Vladimir220/worker_pool/blob/main/pics/Exmp_res.JPG)
+
+### Инструкция по работе с outStreamWorkerPool (proxy-расширением для workerPool) ###
+Для работы с outStreamWorkerPool создайте outStreamWorkerPool через фабричный метод: 
+
+`OutStreamWorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, workerCreator WorkerCreatorFunc, writer io.Writer) *outStreamWorkerPool`
+
+OutStreamWorkerPool имеет такие же методы, что и workerPool, поскольку они работают по общему интерфейсу IWorkerPool. Однако OutStreamWorkerPool отличается от workerPool способом вывода результатов работы: данные отправляются в поток io.Writer, указанный пользователем в фабричном методе OutStreamWorkerPoolCraetor.
+
+Так же как и с workerPool, не забудьте остановить и OutStreamWorkerPool в конце работы программы.
+
+### Пример работы с outStreamWorkerPool (proxy-расширением для workerPool) ###
+```
+package main
+
+import (
+	"fmt"
+	"sync"
+	wp "github.com/Vladimir220/worker_pool"
+)
+
+func main() {
+	oswp := wpImp.OutStreamWorkerPoolCraetor(wg, inputCh, wpImp.SimpleWorkerCreator, os.Stdout)
+	defer oswp.Stop()
+	fmt.Println("Тест OutStreamWorkerPoolCraetor")
+	fmt.Println("Добавляем и запускаем 3 исполнителя")
+	oswp.AddWorkersAndStart(3)
+	for i := 0; i < 10; i++ {
+		inputCh <- fmt.Sprintf("%d", i)
+	}
+	fmt.Println("Добавляем и запускаем ещё 2 исполнителя")
+	oswp.AddWorkersAndStart(2)
+	for i := 0; i < 10; i++ {
+		inputCh <- fmt.Sprintf("%d", i)
+	}
+	fmt.Println("Удаляем 4 исполнителя")
+	oswp.DropWorkers(4)
+
+	for i := 0; i < 10; i++ {
+		inputCh <- fmt.Sprintf("%d", i)
+	}
+}
+```
+
+Результат работы программы будет такой же, как и в примере работы с workerPool. Однако теперь для считывания результата не нужно считывать выходной канал, результат автоматически будет записан в поток io.Writer, указанный при создании OutStreamWorkerPoolCraetor (в нашем случае -- os.Stdout).

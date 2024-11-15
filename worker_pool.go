@@ -2,71 +2,9 @@ package worker_pool
 
 import (
 	"fmt"
-	"io"
-	"strings"
 	"sync"
 	"time"
 )
-
-// ------ division of workers ------
-
-// exported
-
-type IWorker interface {
-	Start()
-	Stop()
-}
-
-// unexported
-// implement IWorker
-// example
-type simpleWorker struct {
-	id         int
-	stopSignal chan struct{}
-	isActive   bool
-	wg         *sync.WaitGroup
-	inputCh    <-chan string
-	outputCh   chan<- string
-}
-
-func (sw *simpleWorker) Start() {
-	defer sw.wg.Done()
-
-	for {
-		select {
-		case str := <-sw.inputCh:
-			{
-				buf := fmt.Sprintf("Message from Worker [id:%d]: \"%s\"", sw.id, str)
-				sw.outputCh <- buf
-				if !sw.isActive {
-					return
-				}
-			}
-		case <-sw.stopSignal:
-			return
-
-		}
-	}
-
-}
-
-func (sw *simpleWorker) Stop() {
-	close(sw.stopSignal)
-	sw.isActive = false
-}
-
-// exported
-// factory for any worker
-type WorkerCreatorFunc func(int, chan struct{}, *sync.WaitGroup, <-chan string, chan<- string) IWorker
-
-// exported
-// implement WorkerCreatorFunc
-// factory for simpleWorker
-func SimpleWorkerCreator(id int, stopSignal chan struct{}, wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string) IWorker {
-	return &simpleWorker{id, stopSignal, true, wg, inputCh, outputCh}
-}
-
-// ------ division of worker pools ------
 
 // exported
 type IWorkerPool interface {
@@ -80,6 +18,7 @@ type IWorkerPool interface {
 // implement IWorkerPool
 type workerPool struct {
 	wg            *sync.WaitGroup
+	mu            *sync.RWMutex
 	inputCh       <-chan string
 	outputCh      chan<- string
 	workerCreator WorkerCreatorFunc
@@ -94,7 +33,7 @@ func (wp *workerPool) AddWorkersAndStart(count int) {
 	sizeW := len(wp.workers)
 	for i := sizeW; i < sizeW+count; i++ {
 		wp.wg.Add(1)
-		worker := wp.workerCreator(i, make(chan struct{}), wp.wg, wp.inputCh, wp.outputCh)
+		worker := wp.workerCreator(i, make(chan struct{}), wp.mu, wp.wg, wp.inputCh, wp.outputCh)
 		wp.workers = append(wp.workers, worker)
 		go worker.Start()
 	}
@@ -123,72 +62,5 @@ func (wp *workerPool) Stop() {
 // exported
 // factory for WorkerPool
 func WorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string, workerCreator WorkerCreatorFunc) workerPool {
-	return workerPool{wg, inputCh, outputCh, workerCreator, make([]IWorker, 0)}
-}
-
-// ------ division of proxy extension for WorkerPool (example) ------
-
-// unexported
-// implement IWorkerPool
-// example
-type outStreamWorkerPool struct {
-	wp            workerPool
-	wg            *sync.WaitGroup
-	inputCh       <-chan string
-	outputCh      chan string
-	workerCreator WorkerCreatorFunc
-	writer        io.Writer
-	isListening   bool
-	stopSignal    chan struct{}
-}
-
-func (p *outStreamWorkerPool) GetNumOfWorkers() int {
-	return p.wp.GetNumOfWorkers()
-}
-
-func (p *outStreamWorkerPool) AddWorkersAndStart(count int) {
-	p.wp.AddWorkersAndStart(count)
-}
-
-func (p *outStreamWorkerPool) DropWorkers(count int) error {
-	return p.wp.DropWorkers(count)
-}
-
-func (p *outStreamWorkerPool) Stop() {
-	p.wp.Stop()
-	p.stopListening()
-}
-
-func (p *outStreamWorkerPool) listeningCh() {
-
-	go func() {
-		for {
-			select {
-			case str := <-p.outputCh:
-				{
-					io.Copy(p.writer, strings.NewReader(str+"\n"))
-					if !p.isListening {
-						return
-					}
-				}
-			case <-p.stopSignal:
-				return
-			}
-		}
-	}()
-}
-
-func (p *outStreamWorkerPool) stopListening() {
-	p.isListening = false
-	close(p.stopSignal)
-}
-
-// exported
-// factory for OutStreamWorkerPoolCraetor
-func OutStreamWorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, workerCreator WorkerCreatorFunc, writer io.Writer) *outStreamWorkerPool {
-	outputCh := make(chan string)
-	wp := WorkerPoolCraetor(wg, inputCh, outputCh, workerCreator)
-	oswp := outStreamWorkerPool{wp, &sync.WaitGroup{}, inputCh, outputCh, workerCreator, writer, true, make(chan struct{})}
-	oswp.listeningCh()
-	return &oswp
+	return workerPool{wg, new(sync.RWMutex), inputCh, outputCh, workerCreator, make([]IWorker, 0)}
 }

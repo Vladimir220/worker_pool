@@ -84,8 +84,12 @@ func main() {
 	isStop := false
 	stopSignal := make(chan struct{})
 
+	var mu sync.RWMutex
+
 	defer func() {
+		mu.Lock()
 		isStop = true
+		mu.Unlock()
 		close(stopSignal)
 	}()
 
@@ -97,9 +101,12 @@ func main() {
 				{
 					fmt.Println(d)
 
+					mu.RLock()
 					if isStop {
+						mu.RUnlock()
 						return
 					}
+					mu.RUnlock()
 				}
 			case <-stopSignal:
 				return

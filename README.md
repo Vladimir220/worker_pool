@@ -81,32 +81,27 @@ func main() {
 
 	defer wp.Stop()
 
-	isStop := false
 	stopSignal := make(chan struct{})
 
-	var mu sync.RWMutex
-
 	defer func() {
-		mu.Lock()
-		isStop = true
-		mu.Unlock()
 		close(stopSignal)
+		wp.Stop()
+		close(inputCh)
+		close(outputCh)
 	}()
 
 	go func() {
-
 		for {
 			select {
 			case d := <-outputCh:
 				{
-					fmt.Println(d)
-
-					mu.RLock()
-					if isStop {
-						mu.RUnlock()
+					select {
+					case <-stopSignal:
 						return
+					default:
 					}
-					mu.RUnlock()
+
+					fmt.Println(d)
 				}
 			case <-stopSignal:
 				return
@@ -114,7 +109,6 @@ func main() {
 		}
 	}()
 
-	fmt.Println("Тест базового Worker Pool")
 	fmt.Println("Добавляем и запускаем 3 исполнителя")
 	wp.AddWorkersAndStart(3)
 	for i := 0; i < 10; i++ {

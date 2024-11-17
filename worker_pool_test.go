@@ -21,7 +21,7 @@ func TestWorkerPool(t *testing.T) {
 		close(out_fun)
 	}()
 
-	t.Logf("#1 Checking the addition of workers and receiving output from them:")
+	t.Logf("(#1) Checking the addition of workers and receiving output from them:")
 	t.Logf("Adding three workers...")
 	go wp.AddWorkersAndStart(3)
 	workers_ids := Set{}
@@ -57,7 +57,7 @@ func TestWorkerPool(t *testing.T) {
 		t.FailNow()
 	}
 
-	t.Logf("#2 Checking the receipt of the number of active workers:")
+	t.Logf("(#2) Checking the receipt of the number of active workers:")
 	num := wp.GetNumOfWorkers()
 	if num == 3 {
 		t.Logf("%c %d", c_ok, num)
@@ -66,7 +66,7 @@ func TestWorkerPool(t *testing.T) {
 		t.FailNow()
 	}
 
-	t.Logf("#3 Checking worker removal:")
+	t.Logf("(#3) Checking worker removal:")
 	t.Logf("Removing two workers...")
 	delete(workers_ids, "1")
 	delete(workers_ids, "2")
@@ -98,7 +98,15 @@ func TestWorkerPool(t *testing.T) {
 		t.FailNow()
 	}
 
-	t.Logf("#4 Checking the pool stop:")
+	t.Logf("(#4) Checking for removal of incorrect number of workers:")
+	err := wp.DropWorkers(10)
+	if err != nil {
+		t.Logf("%c Error detected", c_ok)
+	} else {
+		t.Errorf("%c No error detected", c_error)
+	}
+
+	t.Logf("(#5) Checking the pool stop:")
 	wp.Stop()
 	go chanSpeaker(in_fun, "Hello world", 1, stop_signal)
 	cnt, cncl = context.WithTimeout(context.Background(), 3*time.Second)
@@ -109,4 +117,5 @@ func TestWorkerPool(t *testing.T) {
 	case <-cnt.Done():
 		t.Logf("%c Stopped", c_ok)
 	}
+
 }

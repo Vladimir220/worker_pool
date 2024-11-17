@@ -10,7 +10,6 @@ import (
 // implement IWorkerPool
 type workerPool struct {
 	wg            *sync.WaitGroup
-	mu            *sync.RWMutex
 	inputCh       <-chan string
 	outputCh      chan<- string
 	workerCreator WorkerCreatorFunc
@@ -24,7 +23,7 @@ func (wp *workerPool) GetNumOfWorkers() int {
 func (wp *workerPool) AddWorkersAndStart(count int) {
 	sizeW := len(wp.workers)
 	for i := sizeW; i < sizeW+count; i++ {
-		worker := wp.workerCreator(i, make(chan struct{}), wp.mu, wp.wg, wp.inputCh, wp.outputCh)
+		worker := wp.workerCreator(i, wp.wg, wp.inputCh, wp.outputCh)
 		wp.workers = append(wp.workers, worker)
 		go worker.Start()
 	}
@@ -53,5 +52,5 @@ func (wp *workerPool) Stop() {
 // exported
 // factory for WorkerPool
 func WorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string, workerCreator WorkerCreatorFunc) workerPool {
-	return workerPool{wg, new(sync.RWMutex), inputCh, outputCh, workerCreator, make([]IWorker, 0)}
+	return workerPool{wg, inputCh, outputCh, workerCreator, make([]IWorker, 0)}
 }

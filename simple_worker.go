@@ -3,6 +3,7 @@ package worker_pool
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 // unexported
@@ -11,7 +12,6 @@ import (
 type simpleWorker struct {
 	id         int
 	stopSignal chan struct{}
-	act_mu     *sync.RWMutex
 	isActive   bool
 	wg         *sync.WaitGroup
 	inputCh    <-chan string
@@ -22,41 +22,50 @@ func (sw *simpleWorker) Start() {
 	sw.wg.Add(1)
 	defer sw.wg.Done()
 
+	select {
+	case _, ok := <-sw.stopSignal:
+		if !ok {
+			sw.stopSignal = make(chan struct{})
+		}
+	default:
+	}
+
 	for {
 		select {
 		case str := <-sw.inputCh:
-			{
-				buf := fmt.Sprintf("Message from Worker [id:%d]: \"%s\"", sw.id, str)
-				sw.outputCh <- buf
-				sw.act_mu.RLock()
-				if !sw.isActive {
-					sw.act_mu.RUnlock()
-					return
-				}
-				sw.act_mu.RUnlock()
+			select {
+			case <-sw.stopSignal:
+				return
+			default:
+			}
+
+			buf := fmt.Sprintf("Message from Worker [id:%d]: \"%s\"", sw.id, str)
+
+			select {
+			case sw.outputCh <- buf:
+			case <-sw.stopSignal:
+				return
 			}
 		case <-sw.stopSignal:
 			return
-
 		}
 	}
 
 }
 
 func (sw *simpleWorker) Stop() {
+	time.Sleep(700 * time.Millisecond)
 	close(sw.stopSignal)
-	sw.act_mu.Lock()
-	sw.isActive = false
-	sw.act_mu.Unlock()
+	time.Sleep(700 * time.Millisecond)
 }
 
 // exported
 // factory for any worker
-type WorkerCreatorFunc func(int, chan struct{}, *sync.RWMutex, *sync.WaitGroup, <-chan string, chan<- string) IWorker
+type WorkerCreatorFunc func(int, *sync.WaitGroup, <-chan string, chan<- string) IWorker
 
 // exported
 // implement WorkerCreatorFunc
 // factory for simpleWorker
-func SimpleWorkerCreator(id int, stopSignal chan struct{}, act_mu *sync.RWMutex, wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string) IWorker {
-	return &simpleWorker{id, stopSignal, act_mu, true, wg, inputCh, outputCh}
+func SimpleWorkerCreator(id int, wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string) IWorker {
+	return &simpleWorker{id, make(chan struct{}), true, wg, inputCh, outputCh}
 }

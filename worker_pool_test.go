@@ -9,6 +9,7 @@ import (
 )
 
 func TestWorkerPool(t *testing.T) {
+	//t.Parallel()
 	in_fun := make(chan string)
 	out_fun := make(chan string)
 	stop_signal := make(chan struct{})
@@ -34,7 +35,6 @@ func TestWorkerPool(t *testing.T) {
 	reg := regexp.MustCompile(`id:(\d+)`)
 	cnt, cncl := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cncl()
-	defer wp.Stop()
 	for i := 0; i < 3; i++ {
 		select {
 		case res = <-out_fun:

@@ -60,3 +60,12 @@ func (s Set) String() string {
 
 	return "{" + strings.Join(elements, ", ") + "}"
 }
+
+// Implement Writer
+type buffer []string
+
+func (b *buffer) Write(p []byte) (n int, err error) {
+	*b = append(*b, string(p))
+	n = len(p)
+	return
+}

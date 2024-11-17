@@ -8,6 +8,7 @@ import (
 )
 
 func TestSimpleWorker(t *testing.T) {
+	//t.Parallel()
 	in_fun := make(chan string)
 	out_fun := make(chan string)
 	stop_signal := make(chan struct{})

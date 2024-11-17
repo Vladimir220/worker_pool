@@ -19,7 +19,6 @@ type outStreamWorkerPool struct {
 	outputCh      chan string
 	workerCreator WorkerCreatorFunc
 	writer        io.Writer
-	isListening   bool
 	stopSignal    chan struct{}
 }
 
@@ -47,13 +46,13 @@ func (p *outStreamWorkerPool) listeningCh() {
 			select {
 			case str := <-p.outputCh:
 				{
-					io.Copy(p.writer, strings.NewReader(str+"\n"))
-					p.mu.RLock()
-					if !p.isListening {
-						p.mu.RUnlock()
+					select {
+					case <-p.stopSignal:
 						return
+					default:
 					}
-					p.mu.RUnlock()
+
+					io.Copy(p.writer, strings.NewReader(str+"\n"))
 				}
 			case <-p.stopSignal:
 				return
@@ -63,9 +62,6 @@ func (p *outStreamWorkerPool) listeningCh() {
 }
 
 func (p *outStreamWorkerPool) stopListening() {
-	p.mu.Lock()
-	p.isListening = false
-	p.mu.Unlock()
 	close(p.stopSignal)
 }
 
@@ -74,7 +70,7 @@ func (p *outStreamWorkerPool) stopListening() {
 func OutStreamWorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, workerCreator WorkerCreatorFunc, writer io.Writer) *outStreamWorkerPool {
 	outputCh := make(chan string)
 	wp := WorkerPoolCraetor(wg, inputCh, outputCh, workerCreator)
-	oswp := outStreamWorkerPool{wp, &sync.WaitGroup{}, new(sync.RWMutex), inputCh, outputCh, workerCreator, writer, true, make(chan struct{})}
+	oswp := outStreamWorkerPool{wp, &sync.WaitGroup{}, new(sync.RWMutex), inputCh, outputCh, workerCreator, writer, make(chan struct{})}
 	oswp.listeningCh()
 	return &oswp
 }

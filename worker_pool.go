@@ -6,14 +6,6 @@ import (
 	"time"
 )
 
-// exported
-type IWorkerPool interface {
-	AddAndStartWorkers(count int)
-	DropWorkers(count int) error
-	Stop()
-	GetNumOfWorkers() int
-}
-
 // unexported
 // implement IWorkerPool
 type workerPool struct {
@@ -32,7 +24,6 @@ func (wp *workerPool) GetNumOfWorkers() int {
 func (wp *workerPool) AddWorkersAndStart(count int) {
 	sizeW := len(wp.workers)
 	for i := sizeW; i < sizeW+count; i++ {
-		wp.wg.Add(1)
 		worker := wp.workerCreator(i, make(chan struct{}), wp.mu, wp.wg, wp.inputCh, wp.outputCh)
 		wp.workers = append(wp.workers, worker)
 		go worker.Start()

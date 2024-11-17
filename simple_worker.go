@@ -5,13 +5,6 @@ import (
 	"sync"
 )
 
-// exported
-
-type IWorker interface {
-	Start()
-	Stop()
-}
-
 // unexported
 // implement IWorker
 // example
@@ -26,6 +19,7 @@ type simpleWorker struct {
 }
 
 func (sw *simpleWorker) Start() {
+	sw.wg.Add(1)
 	defer sw.wg.Done()
 
 	for {

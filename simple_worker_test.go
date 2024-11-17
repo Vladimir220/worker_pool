@@ -54,9 +54,27 @@ func TestSimpleWorker(t *testing.T) {
 		t.Logf("%c Stopped", c_ok)
 	}
 
-	t.Logf("(#4) Checking for stop when there is input:")
+	t.Logf("(#4) Checking for stop when there is input but there in not output:")
 	go sw.Start()
 	go chanSpeaker(in_fun, "Hello world", 10000, stop_signal)
+	sw.Stop()
+	cnt, cncl = context.WithTimeout(context.Background(), 2*time.Second)
+	defer cncl()
+	select {
+	case <-out_fun:
+		t.Errorf("%c Not stopped", c_error)
+	case <-cnt.Done():
+		t.Logf("%c Stopped", c_ok)
+	}
+
+	t.Logf("(#5) Checking for stop when there is input and output:")
+	go sw.Start()
+	go func() {
+		for i := 0; i < 5; i++ {
+			<-out_fun
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
 	sw.Stop()
 	cnt, cncl = context.WithTimeout(context.Background(), 2*time.Second)
 	defer cncl()

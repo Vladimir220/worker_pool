@@ -52,7 +52,7 @@ func (p *outStreamWorkerPool) listeningCh() {
 					default:
 					}
 
-					io.Copy(p.writer, strings.NewReader(str+"\n"))
+					io.Copy(p.writer, strings.NewReader(str+"\n")) // вот тут нужен мутекс
 				}
 			case <-p.stopSignal:
 				return

@@ -3,14 +3,16 @@ package worker_pool
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 const (
-	c_ok    = 0x2713
-	c_error = 0x2715
+	Ok    = 0x2713
+	Error = 0x2715
 )
 
-func chanSpeaker(ch chan<- string, str string, times int, stop <-chan struct{}) {
+func chanSpeaker(ch chan<- string, str string, times int, stop <-chan struct{}, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for i := 0; i < times; i++ {
 		select {
 		case ch <- str:

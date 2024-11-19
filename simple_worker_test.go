@@ -11,78 +11,95 @@ func TestSimpleWorker(t *testing.T) {
 	//t.Parallel()
 	in_fun := make(chan string)
 	out_fun := make(chan string)
-	stop_signal := make(chan struct{})
-	sw := SimpleWorkerCreator(0, new(sync.WaitGroup), in_fun, out_fun)
+	stopSignal := make(chan struct{})
+	wgSpeaker := new(sync.WaitGroup)
+	wgWp1 := new(sync.WaitGroup)
+	sw1 := SimpleWorkerCreator(0, wgWp1, in_fun, out_fun)
+	wgWp2 := new(sync.WaitGroup)
+	sw2 := SimpleWorkerCreator(0, wgWp2, in_fun, out_fun)
+	wgWp3 := new(sync.WaitGroup)
+	sw3 := SimpleWorkerCreator(0, wgWp3, in_fun, out_fun)
 	var res string
 
 	defer func() {
-		close(stop_signal)
-		time.Sleep(500 * time.Millisecond)
+		close(stopSignal)
+		sw1.Stop()
+		sw2.Stop()
+		sw3.Stop()
+		wgSpeaker.Wait()
+		wgWp1.Wait()
+		wgWp2.Wait()
+		wgWp3.Wait()
 		close(in_fun)
 		close(out_fun)
 	}()
 
-	go sw.Start()
-	go chanSpeaker(in_fun, "Hello world", 1, stop_signal)
+	go sw1.Start()
+	wgSpeaker.Add(1)
+	go chanSpeaker(in_fun, "Hello world", 1, stopSignal, wgSpeaker)
 
 	t.Logf("(#1) Checking for output values:")
 	cnt, cncl := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cncl()
 	select {
 	case res = <-out_fun:
-		t.Logf("%c Received: « %s »", c_ok, res)
+		t.Logf("%c Received: « %s »", Ok, res)
 	case <-cnt.Done():
-		t.Errorf("%c No response received", c_error)
+		t.Errorf("%c No response received", Error)
 		t.FailNow()
 	}
 
 	t.Logf("(#2) Checking the equality of expected and received data:")
 	if res == `Message from Worker [id:0]: "Hello world"` {
-		t.Logf("%c Equal", c_ok)
+		t.Logf("%c Equal", Ok)
 	} else {
-		t.Errorf("%c Not equal", c_error)
+		t.Errorf("%c Not equal", Error)
 	}
 
 	t.Logf("(#3) Checking stop when there is no input:")
-	sw.Stop()
-	go chanSpeaker(in_fun, "Hello world", 1, stop_signal)
+	sw1.Stop()
+	wgWp1.Wait()
+	wgSpeaker.Add(1)
+	go chanSpeaker(in_fun, "Hello world", 1, stopSignal, wgSpeaker)
 	cnt, cncl = context.WithTimeout(context.Background(), 2*time.Second)
 	defer cncl()
 	select {
 	case <-out_fun:
-		t.Errorf("%c Not stopped", c_error)
+		t.Errorf("%c Not stopped", Error)
 	case <-cnt.Done():
-		t.Logf("%c Stopped", c_ok)
+		t.Logf("%c Stopped", Ok)
 	}
 
 	t.Logf("(#4) Checking for stop when there is input but there in not output:")
-	go sw.Start()
-	go chanSpeaker(in_fun, "Hello world", 10000, stop_signal)
-	sw.Stop()
+	go sw2.Start()
+	wgSpeaker.Add(1)
+	go chanSpeaker(in_fun, "Hello world", 10000, stopSignal, wgSpeaker)
+	sw2.Stop()
+	wgWp2.Wait()
 	cnt, cncl = context.WithTimeout(context.Background(), 2*time.Second)
 	defer cncl()
 	select {
 	case <-out_fun:
-		t.Errorf("%c Not stopped", c_error)
+		t.Errorf("%c Not stopped", Error)
 	case <-cnt.Done():
-		t.Logf("%c Stopped", c_ok)
+		t.Logf("%c Stopped", Ok)
 	}
 
 	t.Logf("(#5) Checking for stop when there is input and output:")
-	go sw.Start()
+	go sw3.Start()
 	go func() {
 		for i := 0; i < 5; i++ {
 			<-out_fun
-			time.Sleep(500 * time.Millisecond)
 		}
 	}()
-	sw.Stop()
+	sw3.Stop()
+	wgWp3.Wait()
 	cnt, cncl = context.WithTimeout(context.Background(), 2*time.Second)
 	defer cncl()
 	select {
 	case <-out_fun:
-		t.Errorf("%c Not stopped", c_error)
+		t.Errorf("%c Not stopped", Error)
 	case <-cnt.Done():
-		t.Logf("%c Stopped", c_ok)
+		t.Logf("%c Stopped", Ok)
 	}
 }

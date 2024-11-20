@@ -11,9 +11,9 @@ import (
 type simpleWorker struct {
 	id         int
 	stopSignal chan struct{}
-	isActive   bool
 	once       sync.Once
-	muAct      sync.RWMutex
+	mu         sync.RWMutex
+	ready      sync.WaitGroup
 	wg         *sync.WaitGroup
 	inputCh    <-chan string
 	outputCh   chan<- string
@@ -24,16 +24,14 @@ func (sw *simpleWorker) Start() {
 }
 
 func (sw *simpleWorker) startOnce() {
-
-	sw.muAct.RLock()
-	if !sw.isActive {
-		sw.muAct.RUnlock()
+	select {
+	case <-sw.stopSignal:
 		return
+	default:
 	}
-	sw.muAct.RUnlock()
 
-	sw.wg.Add(1)
 	defer sw.wg.Done()
+	sw.ready.Done()
 
 	for {
 		select {
@@ -59,13 +57,13 @@ func (sw *simpleWorker) startOnce() {
 }
 
 func (sw *simpleWorker) Stop() {
-	sw.muAct.Lock()
-	if !sw.isActive {
-		sw.muAct.Unlock()
+	select {
+	case <-sw.stopSignal:
 		return
+	default:
 	}
-	sw.isActive = false
-	sw.muAct.Unlock()
+
+	sw.ready.Wait()
 	close(sw.stopSignal)
 }
 
@@ -77,5 +75,7 @@ type WorkerCreatorFunc func(int, *sync.WaitGroup, <-chan string, chan<- string) 
 // implement WorkerCreatorFunc
 // factory for simpleWorker
 func SimpleWorkerCreator(id int, wg *sync.WaitGroup, inputCh <-chan string, outputCh chan<- string) IWorker {
-	return &simpleWorker{id, make(chan struct{}), true, sync.Once{}, sync.RWMutex{}, wg, inputCh, outputCh}
+	sw := &simpleWorker{id, make(chan struct{}), sync.Once{}, sync.RWMutex{}, sync.WaitGroup{}, wg, inputCh, outputCh}
+	sw.ready.Add(1)
+	return sw
 }

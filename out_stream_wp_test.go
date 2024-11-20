@@ -13,9 +13,12 @@ func TestOutStreamWP(t *testing.T) {
 	stopSignal := make(chan struct{})
 	wgWp := new(sync.WaitGroup)
 	wgSpeaker := new(sync.WaitGroup)
-	var buff buffer
+	var (
+		buff buffer
+		res  string
+		err  error
+	)
 	wp := OutStreamWorkerPoolCraetor(wgWp, inFun, SimpleWorkerCreator, &buff)
-	var res string
 
 	defer func() {
 		close(stopSignal)
@@ -40,12 +43,16 @@ func TestOutStreamWP(t *testing.T) {
 	reg := regexp.MustCompile(`id:(\d+)`)
 	time.Sleep(2 * time.Second)
 
-	if len(buff) != 3 {
+	if buff.len() != 3 {
 		t.Errorf("%c No response received", Error)
 		t.FailNow()
 	}
 	for i := 0; i < 3; i++ {
-		res = buff[i]
+		res, err = buff.get(i)
+		if err != nil {
+			t.Errorf("%c %s", Error, err.Error())
+			t.FailNow()
+		}
 		t.Logf("%c Received: « %s »", Ok, res)
 		match := reg.FindStringSubmatch(res)
 		if match == nil {
@@ -60,7 +67,7 @@ func TestOutStreamWP(t *testing.T) {
 		t.Errorf("%c Not all workers worked", Error)
 		t.FailNow()
 	}
-	buff = buff[:0]
+	buff.Clear()
 
 	t.Logf("(#2) Checking the receipt of the number of active workers:")
 	num := wp.GetNumOfWorkers()
@@ -80,12 +87,16 @@ func TestOutStreamWP(t *testing.T) {
 	go chanSpeaker(inFun, "Hello world", 3, stopSignal, wgSpeaker)
 	time.Sleep(2 * time.Second)
 	received_ids = Set{}
-	if len(buff) != 3 { // неожиданно это тоже операция чтения
+	if buff.len() != 3 { // неожиданно это тоже операция чтения
 		t.Errorf("%c No response received", Error)
 		t.FailNow()
 	}
 	for i := 0; i < 3; i++ {
-		res = buff[i] // читаю буф, а в него записывают, всё пон, нуже мутекс
+		res, err = buff.get(i)
+		if err != nil {
+			t.Errorf("%c %s", Error, err.Error())
+			t.FailNow()
+		}
 		t.Logf("%c Received: « %s »", Ok, res)
 		match := reg.FindStringSubmatch(res)
 		if match == nil {
@@ -100,10 +111,10 @@ func TestOutStreamWP(t *testing.T) {
 		t.Errorf("%c Not only one worker worked", Error)
 		t.FailNow()
 	}
-	buff = buff[:0]
+	buff.Clear()
 
 	t.Logf("(#4) Checking for removal of incorrect number of workers:")
-	err := wp.DropWorkers(10)
+	err = wp.DropWorkers(10)
 	if err != nil {
 		t.Logf("%c Error detected", Ok)
 	} else {
@@ -115,7 +126,7 @@ func TestOutStreamWP(t *testing.T) {
 	wgSpeaker.Add(1)
 	go chanSpeaker(inFun, "Hello world", 1, stopSignal, wgSpeaker)
 	time.Sleep(2 * time.Second)
-	if len(buff) != 1 {
+	if buff.len() != 1 {
 		t.Logf("%c Stopped", Ok)
 	} else {
 		t.Errorf("%c Not stopped", Error)

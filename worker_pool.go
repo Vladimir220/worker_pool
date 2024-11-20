@@ -23,6 +23,7 @@ func (wp *workerPool) GetNumOfWorkers() int {
 func (wp *workerPool) AddWorkersAndStart(count int) {
 	sizeW := len(wp.workers)
 	for i := sizeW; i < sizeW+count; i++ {
+		wp.wg.Add(1)
 		worker := wp.workerCreator(i, wp.wg, wp.inputCh, wp.outputCh)
 		wp.workers = append(wp.workers, worker)
 		go worker.Start()

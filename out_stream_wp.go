@@ -14,7 +14,6 @@ import (
 type outStreamWorkerPool struct {
 	wp            workerPool
 	wg            *sync.WaitGroup
-	mu            *sync.RWMutex
 	inputCh       <-chan string
 	outputCh      chan string
 	workerCreator WorkerCreatorFunc
@@ -35,8 +34,13 @@ func (p *outStreamWorkerPool) DropWorkers(count int) error {
 }
 
 func (p *outStreamWorkerPool) Stop() {
+	select {
+	case <-p.stopSignal:
+		return
+	default:
+	}
 	p.wp.Stop()
-	p.stopListening()
+	close(p.stopSignal)
 }
 
 func (p *outStreamWorkerPool) listeningCh() {
@@ -61,16 +65,12 @@ func (p *outStreamWorkerPool) listeningCh() {
 	}()
 }
 
-func (p *outStreamWorkerPool) stopListening() {
-	close(p.stopSignal)
-}
-
 // exported
 // factory for OutStreamWorkerPoolCraetor
 func OutStreamWorkerPoolCraetor(wg *sync.WaitGroup, inputCh <-chan string, workerCreator WorkerCreatorFunc, writer io.Writer) *outStreamWorkerPool {
 	outputCh := make(chan string)
 	wp := WorkerPoolCraetor(wg, inputCh, outputCh, workerCreator)
-	oswp := outStreamWorkerPool{wp, &sync.WaitGroup{}, new(sync.RWMutex), inputCh, outputCh, workerCreator, writer, make(chan struct{})}
+	oswp := outStreamWorkerPool{wp, &sync.WaitGroup{}, inputCh, outputCh, workerCreator, writer, make(chan struct{})}
 	oswp.listeningCh()
 	return &oswp
 }

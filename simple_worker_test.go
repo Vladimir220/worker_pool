@@ -34,6 +34,7 @@ func TestSimpleWorker(t *testing.T) {
 		close(out_fun)
 	}()
 
+	wgWp1.Add(1)
 	go sw1.Start()
 	wgSpeaker.Add(1)
 	go chanSpeaker(in_fun, "Hello world", 1, stopSignal, wgSpeaker)
@@ -71,11 +72,15 @@ func TestSimpleWorker(t *testing.T) {
 	}
 
 	t.Logf("(#4) Checking for stop when there is input but there in not output:")
+	wgWp2.Add(1)
 	go sw2.Start()
 	wgSpeaker.Add(1)
 	go chanSpeaker(in_fun, "Hello world", 10000, stopSignal, wgSpeaker)
 	sw2.Stop()
+	start := time.Now()
 	wgWp2.Wait()
+	duration := time.Since(start).Seconds()
+	t.Logf("%f", duration)
 	cnt, cncl = context.WithTimeout(context.Background(), 2*time.Second)
 	defer cncl()
 	select {
@@ -86,6 +91,7 @@ func TestSimpleWorker(t *testing.T) {
 	}
 
 	t.Logf("(#5) Checking for stop when there is input and output:")
+	wgWp3.Add(1)
 	go sw3.Start()
 	go func() {
 		for i := 0; i < 5; i++ {

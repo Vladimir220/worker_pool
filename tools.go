@@ -64,10 +64,40 @@ func (s Set) String() string {
 }
 
 // Implement Writer
-type buffer []string
+type buffer struct {
+	strs []string
+	mu   sync.RWMutex
+}
 
 func (b *buffer) Write(p []byte) (n int, err error) {
-	*b = append(*b, string(p))
+	b.mu.Lock()
+	b.strs = append(b.strs, string(p))
+	b.mu.Unlock()
 	n = len(p)
 	return
+}
+
+func (b *buffer) len() (l int) {
+	b.mu.RLock()
+	l = len(b.strs)
+	b.mu.RUnlock()
+	return
+}
+
+func (b *buffer) get(pos int) (s string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("error: %v", r)
+		}
+	}()
+	b.mu.RLock()
+	s = b.strs[pos]
+	b.mu.RUnlock()
+	return
+}
+
+func (b *buffer) Clear() {
+	b.mu.Lock()
+	b.strs = b.strs[:0]
+	b.mu.Unlock()
 }
